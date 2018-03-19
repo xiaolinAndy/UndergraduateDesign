@@ -7,11 +7,11 @@ pickle_file = open(file_name, "rb")
 D = pickle.load(pickle_file)
 print(D['count'])
 
-output = open('D:\Andy\Code\data\\twitter_big_corpus_cleaned_2.txt', 'w')
+output = open('D:\Andy\Code\data\\twitter_big_corpus_cleaned_3.pkl', 'w')
 dialog = []
 valid = 1
 
-co = re.compile(u'[\U00000100-\U0010ffff]')
+#co = re.compile(u'[\U00000100-\U0010ffff]')
 for i, d in enumerate(D['data']):
     pair = []
     for j, s in enumerate(d):
@@ -43,7 +43,7 @@ for i, d in enumerate(D['data']):
         utterance = utterance.replace(',', ' , ')
         utterance = utterance.replace('~', '')
         utterance = utterance.replace('-', ' - ')
-        utterance = utterance.replace('*', ' * ')
+        utterance = utterance.replace('*', '')
         utterance = utterance.replace('(', ' ')
         utterance = utterance.replace(')', ' ')
         utterance = utterance.replace('[', ' ')
