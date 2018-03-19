@@ -1,5 +1,6 @@
 import pickle
 import re
+import jieba
 
 '''file_name = '../Data/tieba_comments.txt'
 output = open('../Data/tieba_comments.pkl', 'wb')
@@ -59,62 +60,95 @@ for i,d in enumerate(D1+D2):
     except:
         continue'''
 
-D = open('../Data/tieba_comments_2.pkl', 'rb')
-output = open('../Data/tieba_comment_clean_txt', 'w')
-new = open('../Data/tieba_comments_final.pkl', 'wb')
+D = open('../tieba/temp_comments_clean.txt', 'r')
+output = open('../tieba/temp_comments_modified.txt', 'w')
+newf = open('../tieba/temp_comments_modified.pkl', 'wb')
+D = D.readlines()
 dialog = []
 valid = 1
+pair = []
 for i, d in enumerate(D):
-    print(d.decode("gbk"))
     pair = []
-    for j, s in enumerate(d):
-        utterance = s + ' </s>'
-        utterance = utterance.replace('& lt', '<')
-        utterance = utterance.replace('& gt', '>')
-        utterance = utterance.replace('&lt;', '<')
-        utterance = utterance.replace('&gt;', '>')
-        utterance = utterance.replace('"', ' " ')
-        utterance = utterance.replace("'", " '")
-        utterance = utterance.replace(";", " ")
-        utterance = utterance.replace("`", " ")
-        utterance = utterance.replace("..", ".")
-        utterance = utterance.replace("..", ".")
-        utterance = utterance.replace("..", ".")
-        utterance = utterance.replace(",,", ",")
-        utterance = utterance.replace(",,", ",")
-        utterance = utterance.replace(",,", ",")
-        utterance = utterance.replace('.', ' . ')
-        utterance = utterance.replace('!', ' ! ')
-        utterance = utterance.replace('?', ' ? ')
-        utterance = utterance.replace(',', ' , ')
-        utterance = utterance.replace('~', '')
-        utterance = utterance.replace('-', ' - ')
-        utterance = utterance.replace('*', '')
-        utterance = utterance.replace('(', ' ')
-        utterance = utterance.replace(')', ' ')
-        utterance = utterance.replace('[', ' ')
-        utterance = utterance.replace(']', ' ')
-        utterance = re.sub('[\s]+', ' ', utterance)
-        utterance = utterance.replace('  ', ' ')
-        utterance = utterance.replace('  ', ' ')
-        s = utterance
-        while '! ! ! !' in s:
-            s = s.replace('! ! ! !', '! ! !')
-        while len(s) > 0 and s[-1] == ' ':
-            s = s[0:-1]
-        if not s[-5:] == ' </s>':
-            s = s + ' </s>'
+    utterance = d + ' <end>'
+    utterance = re.sub('\d{5,}', '<num>', utterance)
+    utterance = utterance.replace('& lt', '<')
+    utterance = utterance.replace('& gt', '>')
+    utterance = utterance.replace('&lt;', '<')
+    utterance = utterance.replace('&gt;', '>')
+    utterance = utterance.replace("`", " ")
+    utterance = utterance.replace("..", ".")
+    utterance = utterance.replace("..", ".")
+    utterance = utterance.replace("..", ".")
+    utterance = utterance.replace(",,", ",")
+    utterance = utterance.replace(",,", ",")
+    utterance = utterance.replace(",,", ",")
+    utterance = utterance.replace('.', ' . ')
+    utterance = utterance.replace('~', '')
+    utterance = utterance.replace('*', '')
+    utterance = utterance.replace('(', ' ')
+    utterance = utterance.replace(')', ' ')
+    utterance = utterance.replace('[', ' ')
+    utterance = utterance.replace(']', ' ')
+    utterance = re.sub('[\s]+', ' ', utterance)
+    utterance = utterance.replace('  ', ' ')
+    utterance = utterance.replace('  ', ' ')
+    s = utterance
+    while '! ! ! !' in s:
+        s = s.replace('! ! ! !', '! ! !')
+    while '。。。。' in s:
+        s = s.replace('。。。。', '。。。')
+    while '，，，，' in s:
+        s = s.replace('，，，，', '，，，')
+    while len(s) > 0 and s[-1] == ' ':
+        s = s[0:-1]
+    if not s[-5:] == '<end>':
+        s = s + '<end>'
+    try:
+        output.write(s + '\n')
+        cut = jieba.cut(s)
+        l = []
+        new = []
+        index = 0
+        for w in cut:
+            l.append(w)
+        while index < len(l):
+            if index + 2 < len(l) and l[index] == '<' and l[index+1] == 'num' and l[index+2] == '>':
+                new.append('<num>')
+                index += 3
+            elif index + 2 < len(l) and l[index] == '<' and l[index+1] == 'end' and l[index+2] == '>':
+                new.append('<end>')
+                index += 3
+            else:
+                new.append(l[index])
+                index += 1
         pair.append(s)
-        try:
-            output.write(s + '\n')
-        except:
-            print(s)
-            valid = 0
-    if valid:
+    except:
+        print(s)
+        valid = 0
+    if i % 2 == 1 and valid:
         dialog.append(pair)
-    else:
+    elif i % 2 == 1:
         valid = 1
     if (i % 10000 == 0):
         print(i/10000)
 
-pickle.dump(dialog, new)
+pickle.dump(dialog, newf, protocol=2)
+
+s = "我是林海涛，又名“海涛”，今天是：2018年5月10日+QQ<num>abc<end>。"
+cut = jieba.cut(s)
+l = []
+new = []
+index = 0
+for w in cut:
+    l.append(w)
+while index < len(l):
+    if index + 2 < len(l) and l[index] == '<' and l[index+1] == 'num' and l[index+2] == '>':
+        new.append('<num>')
+        index += 3
+    elif index + 2 < len(l) and l[index] == '<' and l[index+1] == 'end' and l[index+2] == '>':
+        new.append('<end>')
+        index += 3
+    else:
+        new.append(l[index])
+        index += 1
+print(" | ".join(new))
