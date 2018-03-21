@@ -5,7 +5,7 @@ import sys
 import string
 
 state = 'tieba'
-if state == 'twitter':
+'''if state == 'twitter':
     file_name = 'D:\Andy\Code\data\\twitter_big_corpus_cleaned_2.pkl'
     file_name_1 = 'D:\Andy\Code\data\\twitter_big_corpus_cleaned_500K_train.pkl'
     file_name_2 = 'D:\Andy\Code\data\\twitter_big_corpus_cleaned_50K_valid.pkl'
@@ -85,9 +85,6 @@ else:
     total_length = 0
     words = {}
 
-    '''f1 = open(file_name_1, 'wb')
-    f2 = open(file_name_2, 'wb')
-    f3 = open(file_name_3, 'wb')'''
     with open(file_name, 'rb') as f:
         D = pickle.load(f)
         for i, d in enumerate(D):
@@ -120,8 +117,8 @@ else:
             if (i % 10000 == 0):
                 print(i)
         print(max_length, min_length)
-
-        '''dialog1 = random.sample(dialog, 550000)
+        
+        dialog1 = random.sample(dialog, 550000)
         data = {'name': 'tieba_500K_train',
                 'count': 500000,
                 'data': dialog1[:500000]}
@@ -145,4 +142,18 @@ else:
         if (words[word] >= 20):
             count1 += 1
     print(count1, count2)'''
+
+file_name = '../Data/tieba/comments_final.txt'
+f = open(file_name, 'r')
+count = 0
+total = 0
+for i, line in enumerate(f.readlines()):
+    if line.find('顶') != -1 and i % 2 == 1:
+        count += 1
+    total += 1
+print(count, total)
+
+
+
+
 

@@ -1,10 +1,11 @@
 import pickle
 import re
 
-response_num = 20
+response_num = 30
 index = input("请输入编号: ")
 task1 = pickle.load(open('./data/task1_' + index, 'rb'))
-output = open('./data/task1_res%d.txt' % int(index) , 'w')
+output1 = open('./data/task1_twitter_%d.txt' % int(index) , 'a+')
+output2 = open('./data/task1_tieba_%d.txt' % int(index) , 'a+')
 
 print("请给出一个合理的对话回答（内容来自于twitter）")
 for i in range(response_num):
@@ -12,24 +13,7 @@ for i in range(response_num):
     print('(%d/%d) %s' % (i+1, response_num, c))
     res = input("请输入回答: ")
     print('\n')
-    while res == '':
-        res = input("请输入回答: ")
-        print('\n')
-    output.write(str(i+1) + '\n')
-    output.write(res + '\n')
-
-print("请给出一个合理的对话回答（内容来自于ubuntu）")
-for i in range(response_num):
-    c = re.sub('__eot__', '', task1['ubuntu'][i])
-    c = re.sub('__eou__', '  ', c)
-    print('(%d/%d) %s' % (i + 1, response_num, c))
-    res = input("请输入回答: ")
-    print('\n')
-    while res == '':
-        res = input("请输入回答: ")
-        print('\n')
-    output.write(str(i + 1) + '\n')
-    output.write(res + '\n')
+    output1.write(str(i+1) + ': ' + res + '\n')
 
 print("请给出一个合理的对话回答（内容来自于tieba）")
 for i in range(response_num):
@@ -38,8 +22,4 @@ for i in range(response_num):
     print('(%d/%d) %s' % (i + 1, response_num, c))
     res = input("请输入回答: ")
     print('\n')
-    while res == '':
-        res = input("请输入回答: ")
-        print('\n')
-    output.write(str(i + 1) + '\n')
-    output.write(res + '\n')
+    output2.write(str(i + 1) + ': ' + res + '\n')
