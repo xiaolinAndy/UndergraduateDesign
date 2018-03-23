@@ -3,6 +3,7 @@ import random
 import re
 import sys
 import string
+from collections import defaultdict
 
 state = 'tieba'
 '''if state == 'twitter':
@@ -142,16 +143,40 @@ else:
         if (words[word] >= 20):
             count1 += 1
     print(count1, count2)'''
-
-file_name = '../Data/tieba/comments_final.txt'
-f = open(file_name, 'r')
+#utterance = utterance.replace('  ', ' ')
+file_name = '../Data/tieba/comments_final_modified.pkl'
+tieba_context = open('./tieba/new.tieba.contexts.txt', 'r', encoding='utf-8').readlines()
+tieba_response = open('./tieba/new.true.responses.txt', 'r', encoding='utf-8').readlines()
+output = open('./tieba/new.human.responses.txt', 'w')
+f = pickle.load(open(file_name, 'rb'))
 count = 0
-total = 0
-for i, line in enumerate(f.readlines()):
-    if line.find('顶') != -1 and i % 2 == 1:
-        count += 1
-    total += 1
-print(count, total)
+context = []
+response = []
+for d in f:
+    context.append(''.join(d[0]))
+    response.append(''.join(d[1]))
+#print(context[0])
+d = defaultdict(list)
+for k,va in [(v,i) for i,v in enumerate(context)]:
+    d[k].append(va)
+for i, line in enumerate(tieba_context):
+    flag = 0
+    #print(line)
+    line = line.replace(' ', '').strip()
+    index = d[line]
+    tr = tieba_response[i].replace(' ', '').strip()
+    if len(index) > 1:
+        for j in index:
+            if tr != response[j] and response[j].find('撸') == -1 and response[j].find('十五字') == -1:
+                output.write(response[j] + '\n')
+                flag = 1
+                count += 1
+                break
+    if not flag:
+        print(line, '\n')
+        res = input("请输入回答: ")
+        output.write(res + '\n')
+print(count)
 
 
 

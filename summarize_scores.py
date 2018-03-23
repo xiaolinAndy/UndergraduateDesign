@@ -1,23 +1,23 @@
 import pickle
 
 index = pickle.load(open('./data/index', 'rb'))
-twitter_s = open('./data/task2_twitter1.txt', 'r').readlines()
-twitter_scores = []
-ord = index['response_order'][:80]
+tieba_s = open('./data/statistics_1.txt', 'r').readline()
+ord = index['response_order'][:200]
 tfidf_score = {1:0,2:0,3:0,4:0,5:0}
 dual_encoder_score = {1:0,2:0,3:0,4:0,5:0}
 VHRED_score = {1:0,2:0,3:0,4:0,5:0}
-split = ':'
-for line in twitter_s:
-    line = line[line.find(split)+1:]
-    twitter_scores.append(int(line))
+human_score = {1:0,2:0,3:0,4:0,5:0}
+scores = tieba_s.split()
+print(len(scores))
 for i, ind in enumerate(ord):
     if int(ind/500) == 0:
-        tfidf_score[twitter_scores[i]] += 1
+        tfidf_score[int(scores[i])] += 1
     elif int(ind/500) == 1:
-        dual_encoder_score[twitter_scores[i]] += 1
+        dual_encoder_score[int(scores[i])] += 1
+    elif int(ind/500) == 2:
+        VHRED_score[int(scores[i])] += 1
     else:
-        VHRED_score[twitter_scores[i]] += 1
+        human_score[int(scores[i])] += 1
 tmp = 0
 count = 0
 for p in tfidf_score:
@@ -39,3 +39,10 @@ for p in VHRED_score:
     tmp += VHRED_score[p] * p
     print(p, ': ', VHRED_score[p])
 print('VHRED_score: ', tmp / count)
+count = 0
+tmp = 0
+for p in human_score:
+    count += human_score[p]
+    tmp += human_score[p] * p
+    print(p, ': ', human_score[p])
+print('human_score: ', tmp / count)
