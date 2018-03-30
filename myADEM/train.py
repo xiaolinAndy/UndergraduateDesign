@@ -25,8 +25,12 @@ if __name__ == "__main__":
 	# Set up experiment directory.
 	create_experiment(config)
 	# This will load our training data.
-	print 'Loading data...'
-	data = load_data(config)
+	if os.path.exists(config['exp_folder'] + '/dataset.pkl'):
+		print 'Loading from existed data...'
+		data = cPickle.load(open(config['exp_folder'] + '/dataset.pkl', 'rb'))
+	else:
+		print 'Loading from new data...'
+		data = load_data(config)
 
 	# Train our model.
 	adem = ADEM(config)

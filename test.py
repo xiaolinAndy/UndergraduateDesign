@@ -144,7 +144,8 @@ else:
             count1 += 1
     print(count1, count2)'''
 #utterance = utterance.replace('  ', ' ')
-file_name = '../Data/tieba/comments_final_modified.pkl'
+
+'''file_name = '../Data/tieba/comments_final_modified.pkl'
 tieba_context = open('./tieba/new.tieba.contexts.txt', 'r', encoding='utf-8').readlines()
 tieba_response = open('./tieba/new.true.responses.txt', 'r', encoding='utf-8').readlines()
 output = open('./tieba/new.human.responses.txt', 'w')
@@ -176,8 +177,10 @@ for i, line in enumerate(tieba_context):
         print(line, '\n')
         res = input("请输入回答: ")
         output.write(res + '\n')
-print(count)
-
+print(count)'''
+ind = pickle.load(open('./data/index', 'rb'))
+f = open('./data/index2.pkl', 'wb')
+pickle.dump(ind, f, protocol=2)
 
 
 

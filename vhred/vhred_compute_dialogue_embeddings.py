@@ -19,8 +19,8 @@ import codecs
 import utils
 
 from vhred_dialog_encdec import DialogEncoderDecoder
-from numpy_compat import argpartition
-from vhred_state import prototype_state
+#from numpy_compat import argpartition
+from state import prototype_state
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ def compute_encodings(joined_contexts, model, model_compute_encoder_state, model
     if embedding_type.upper() == 'CONTEXT':
 
         encoder_states = model_compute_encoder_state(context, reversed_context, seqlen+1)
-        context_hidden_states = encoder_states[-2] # hidden state for the "context" encoder, h_s,
+        context_hidden_states = encoder_states[-1] # hidden state for the "context" encoder, h_s,
                                            # and last hidden state of the utterance "encoder", h
 
         output_states = context_hidden_states

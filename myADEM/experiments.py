@@ -22,8 +22,9 @@ def default_config():
 	config['oversample_length'] = True
 	config['embedding_type'] = 'CONTEXT'
 	config['vhred_prefix'] = '../vhred/1521439677.69_TiebaModel_VHRED'
+	#config['vhred_prefix'] = '../vhred/1521527199.84_TiebaModel'
 	config['vhred_dict'] = '../vhred/dict.pkl'
-	config['vhred_embeddings_file'] = ''
+	config['vhred_embeddings_file'] = 'tieba_embedding'
 	config['vhred_dim'] = 1000
 
 	## Model parameters.
@@ -39,9 +40,9 @@ def default_config():
 
 	## Training parameters.
 
-	config['max_epochs'] = 200
-	config['val_percent'] = 0.15
-	config['test_percent'] = 0.15
+	config['max_epochs'] = 150
+	config['val_percent'] = 0.2
+	config['test_percent'] = 0.2
 	# Whether to validate on 'rmse' or 'pearson' correlation.
 	config['validation_metric'] = 'rmse'
 	# If set to a model 'hred', 'de', 'tfidf', 'human', we will leave this model out of the training set.
@@ -51,10 +52,10 @@ def default_config():
 	config['true_responses'] = '../tieba/final.true.responses.txt'
 	config['tfidf'] = '../tieba/final.tfidf.responses.txt'
 	config['de'] = '../tieba/final.dual_encoder.responses.txt'
-	config['VHRED'] = '../tieba/final.VHRED.responses.txt'
+	config['vhred'] = '../tieba/final.VHRED.responses.txt'
 	config['human'] = '../tieba/final.human.responses.txt'
 	config['score'] = '../data/statistics.pkl'
-	config['index'] = '../data/index'
+	config['index'] = '../data/index2.pkl'
 
 	return config
 

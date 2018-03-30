@@ -6,17 +6,23 @@ import numpy as np
 from sklearn.decomposition import PCA
 from scipy.stats import pearsonr, spearmanr
 import lasagne
+VHRED_FOLDER = '../vhred/'
+# Import VHRED files.
 import sys
+sys.path.insert(0,VHRED_FOLDER)
+from utils import *
+sys.path.remove(VHRED_FOLDER)
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 class ADEM(object):
 	
-	def __init__(self, preprocessor, config, load_from=None):
+	def __init__(self, config, load_from=None):
 
 		if not load_from is None:
 			self.load(load_from)
 		else:
 			self.config = config
-		self.preprocessor = preprocessor
 
 		self.pretrainer = None
 		if self.config['pretraining'].lower() == 'vhred':
@@ -171,6 +177,51 @@ class ADEM(object):
 
 		return train_x, val_x, test_x, train_y, val_y, test_y, train_lengths
 
+	'''def _create_data_splits(self, data):
+		n_models = len(data[0]['r_models'])
+		n = len(data) * n_models
+		n_train = int((1 - (self.config['val_percent'] + self.config['test_percent'])) * n)
+		n_val = int((1 - self.config['test_percent']) * n) - n_train
+		n_test = n - n_train - n_val
+
+		emb_dim = len(data[0]['c_emb'])
+		# Create arrays to store the data. The middle dimension represents:
+		# 0: context, 1: gt_response, 2: model_response
+		train_x = np.zeros((n_train, 3, emb_dim), dtype=theano.config.floatX)
+		val_x = np.zeros((n_val, 3, emb_dim), dtype=theano.config.floatX)
+		test_x = np.zeros((n_test, 3, emb_dim), dtype=theano.config.floatX)
+		train_y = np.zeros((n_train,), dtype=theano.config.floatX)
+		val_y = np.zeros((n_val,), dtype=theano.config.floatX)
+		test_y = np.zeros((n_test,), dtype=theano.config.floatX)
+
+		train_lengths = np.zeros((n_train,), dtype=theano.config.floatX)
+
+		# Load in the embeddings from the dataset.
+		for ix, entry in enumerate(data):
+			for jx, m_name in enumerate(data[ix]['r_models'].keys()):
+				kx = ix * n_models + jx
+
+				if kx < n_val:
+					val_x[kx, 0, :] = data[ix]['c_emb']
+					val_x[kx, 1, :] = data[ix]['r_gt_emb']
+					val_x[kx, 2, :] = data[ix]['r_model_embs'][m_name]
+					val_y[kx] = data[ix]['r_models'][m_name][1]
+
+				elif kx < n_val + n_test:
+					test_x[kx - n_val, 0, :] = data[ix]['c_emb']
+					test_x[kx - n_val, 1, :] = data[ix]['r_gt_emb']
+					test_x[kx - n_val, 2, :] = data[ix]['r_model_embs'][m_name]
+					test_y[kx - n_val] = data[ix]['r_models'][m_name][1]
+
+				else:
+					train_x[kx - n_test - n_val, 0, :] = data[ix]['c_emb']
+					train_x[kx - n_test - n_val, 1, :] = data[ix]['r_gt_emb']
+					train_x[kx - n_test - n_val, 2, :] = data[ix]['r_model_embs'][m_name]
+					train_y[kx - n_test - n_val] = data[ix]['r_models'][m_name][1]
+					train_lengths[kx - n_test - n_val] = data[ix]['r_models'][m_name][2]
+
+		return train_x, val_x, test_x, train_y, val_y, test_y, train_lengths'''
+
 	def _build_model(self, emb_dim, init_mean, init_range, training_mode = False):
 		## batch index
 		index = T.lscalar()
@@ -181,43 +232,67 @@ class ADEM(object):
 		# Matrices for predicting score
 		self.M = theano.shared(np.eye(emb_dim).astype(theano.config.floatX), borrow=True)
 		self.N = theano.shared(np.eye(emb_dim).astype(theano.config.floatX), borrow=True)
+		#self.new_mean = theano.shared(value=init_mean.astype(theano.config.floatX), name="mean")
+		#self.new_range = theano.shared(value=init_range.astype(theano.config.floatX), name="range")
+		#self.rng = np.random.RandomState(1)
+		#self.hidden_size = 50
+		#self.W1 = theano.shared(value=NormalInit(self.rng, 3 * emb_dim, self.hidden_size), name='W1')
+		#self.b1 = theano.shared(value=np.zeros((self.hidden_size,), dtype='float32'), name='b1')
+		#self.W2 = theano.shared(value=NormalInit(self.rng, self.hidden_size, 1), name='W2')
+		#self.b2 = theano.shared(value=0., name='b2')
 		
 		# Set embeddings by slicing tensor
 		self.emb_context = x[:,0,:]
 		self.emb_true_response = x[:,1,:]
 		self.emb_response = x[:,2,:]
+		#embs = T.concatenate([self.emb_context, self.emb_true_response, self.emb_response], axis = 1)
+		#t1 = T.tanh(T.dot(embs, self.W1) + self.b1)
+		#out = T.nnet.sigmoid(T.dot(t1, self.W2))
+		#out = T.flatten(out)
+		#output = out * 4 + 1
 
 		# Compute score predictions
+		self.pred = 0
 		self.pred1 = T.sum(self.emb_context * T.dot(self.emb_response, self.M), axis=1)
 		self.pred2 = T.sum(self.emb_true_response * T.dot(self.emb_response, self.N), axis=1)
 
-		self.pred = 0
+		#self.pred = output
 		if self.config['use_c']: self.pred += self.pred1
 		if self.config['use_r']: self.pred += self.pred2
 
 		# To re-scale dot product values to [1,5] range.
-		output = 3 + 4 * (self.pred - init_mean) / init_range  
+		#new_mean = T.mean(self.pred)
+		#new_range = T.max(self.pred) - T.min(self.pred)
+		#output = 3 + 4 * (self.pred - self.new_mean) / self.new_range
+		output = T.nnet.sigmoid(self.pred) * 4 + 1
+		#output = 3 + 4 * (self.pred - new_mean) / new_range
+		#output = self.pred
 
 		loss = T.mean((output - y)**2)
 		l2_reg = self.M.norm(2) + self.N.norm(2)
-		l1_reg = self.M.norm(1) + self.N.norm(1) 
+		l1_reg = self.M.norm(1) + self.N.norm(1)
+		#l2_reg = self.W1.norm(2) + self.W2.norm(2)
+		#l1_reg = self.W1.norm(1) + self.W2.norm(1)
 
 		score_cost = loss + self.config['l2_reg'] * l2_reg + self.config['l1_reg'] * l1_reg
 
 		# Get the test predictions.
 		self._get_outputs = theano.function(
 			inputs=[x,],
-			outputs=output,
+			outputs=[output, self.pred],
 			on_unused_input='warn'
 		)
 
 		params = []
 		if self.config['use_c']: params.append(self.M)
 		if self.config['use_r']: params.append(self.N)
+		#params += [self.W1, self.W2, self.b1]
 		updates = lasagne.updates.adam(score_cost, params)
 
 		if training_mode == True:
 			bs = self.config['bs']
+			#d = {self.new_mean: new_mean,
+				 #self.new_range: new_range}
 			self._train_model = theano.function(
 				inputs=[index],
 				outputs=score_cost,
@@ -262,7 +337,16 @@ class ADEM(object):
 		
 		# Create train, validation, and test sets.
 		train_x, val_x, test_x, train_y, val_y, test_y, train_lengths = self._create_data_splits(data)
-		
+		'''e1 = np.array(train_x[4][0], dtype ='float32')
+		e2 = np.array(train_x[4][2], dtype='float32')
+		e3 = np.array(train_x[5][2], dtype='float32')
+		e4 = np.array(train_x[6][2], dtype='float32')
+		e5 = np.array(train_x[7][2], dtype='float32')
+		cos_1 = np.sum(e1 * e2)/(np.linalg.norm(e1) * np.linalg.norm(e2))
+		cos_2 = np.sum(e1 * e3) / (np.linalg.norm(e1) * np.linalg.norm(e3))
+		cos_3 = np.sum(e1 * e4) / (np.linalg.norm(e1) * np.linalg.norm(e4))
+		cos_4 = np.sum(e1 * e5) / (np.linalg.norm(e1) * np.linalg.norm(e5))
+		print 0.5 + 0.5 * cos_1, 0.5 + 0.5 * cos_2, 0.5 + 0.5 * cos_3, 0.5 + 0.5 * cos_4'''
 
 		# Oversample training set, create dataset.
 		#train_x, train_y = self._oversample(train_x, train_y, train_lengths)
@@ -270,7 +354,6 @@ class ADEM(object):
 		train_x = self._compute_pca(train_x)
 		val_x = self._apply_pca(val_x)
 		test_x = self._apply_pca(test_x)
-		
 		init_mean, init_range = self._compute_init_values(train_x)
 		self.init_mean, self.init_range = init_mean, init_range
 
@@ -297,39 +380,56 @@ class ADEM(object):
 		best_val_loss, best_epoch = np.inf, -1
 
 		indices = range(n_train_batches)
-		
+
+		model_train_out, train_pred = self._get_outputs(train_x)
+		model_val_out, val_pred = self._get_outputs(val_x)
+		# Get the training and validation MSE.
+		train_loss = np.sqrt(np.mean(np.square(model_train_out - train_y)))
+		val_loss = np.sqrt(np.mean(np.square(model_val_out - val_y)))
+		# Keep track of the correlations.
+		train_correlation = self._correlation(model_train_out, train_y)
+		# print self.init_mean, self.init_range
+		best_val_cor = self._correlation(model_val_out, val_y)
+		print 'epoch: ', epoch, train_loss, val_loss, train_correlation[1][0], best_val_cor[1][0]
+
 		while (epoch < self.config['max_epochs']):
 			epoch += 1   
 			np.random.shuffle(indices)
 
 			# Train for an epoch.
 			cost_list = []
-			for minibatch_index in indices:
+			for i, minibatch_index in enumerate(indices):
 				minibatch_cost = self._train_model(minibatch_index)
 				cost_list.append(minibatch_cost)
 			loss_list.append(np.mean(cost_list))
 
 			# Get the predictions for each dataset.
-			model_train_out = self._get_outputs(train_x)
-			model_val_out = self._get_outputs(val_x)
+			model_train_out, train_pred = self._get_outputs(train_x)
+			model_val_out, val_pred = self._get_outputs(val_x)
 			# Get the training and validation MSE.
 			train_loss = np.sqrt(np.mean(np.square(model_train_out - train_y)))
 			val_loss = np.sqrt(np.mean(np.square(model_val_out - val_y)))
 			# Keep track of the correlations.
 			train_correlation = self._correlation(model_train_out, train_y)
+			#print self.init_mean, self.init_range
+			val_cor = self._correlation(model_val_out, val_y)
+			print 'epoch: ', epoch, train_loss, val_loss, val_cor[0][0], val_cor[1][0]
+			#print train_pred[:10], model_train_out[:10], val_pred[:10], model_val_out[:10]
 
 			# Only save the model when we best the best MSE on the validation set.
-			if val_loss < best_val_loss:
+			if val_cor[1][0] + val_cor[0][0] > best_val_cor[1][0] + best_val_cor[0][0]:
 				best_val_cor = self._correlation(model_val_out, val_y)
 				best_val_loss = val_loss
 				best_output_val = model_val_out
 
-				model_out_test = self._get_outputs(test_x)
+				model_out_test, _ = self._get_outputs(test_x)
 				best_test_cor = self._correlation(model_out_test, test_y)
 				best_test_loss = np.sqrt(np.mean(np.square(model_out_test - test_y)))
+				#print epoch, best_test_loss, best_test_cor[0][0], best_test_cor[1][0]
 
 				best_epoch = epoch
 				self.best_params = [self.M.get_value(), self.N.get_value()]
+				#self.best_params = [self.W1.get_value(), self.W2.get_value()]
 
 		print 'Done training!'
 		print 'Last updated on epoch %d' % best_epoch

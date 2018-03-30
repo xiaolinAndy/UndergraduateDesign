@@ -11,7 +11,7 @@ import sys
 VHRED_FOLDER = '../vhred/'
 # Import VHRED files.
 sys.path.insert(0,VHRED_FOLDER)
-from vhred_dialog_encdec import DialogEncoderDecoder as VHRED_DialogEncoderDecoder
+from dialog_encdec import DialogEncoderDecoder as VHRED_DialogEncoderDecoder
 from vhred_compute_dialogue_embeddings import compute_encodings as VHRED_compute_encodings
 from state import prototype_tieba_VHRED as VHRED_prototype_state
 sys.path.remove(VHRED_FOLDER)
