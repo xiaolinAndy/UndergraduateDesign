@@ -33,12 +33,17 @@ def clean_data(text):
     return clean_text
 
 def get_score(config):
-    scores = cPickle.load(open(config['score'], 'rb'))['avg']
+    ##
+    scores_avg = cPickle.load(open(config['score'], 'rb'))['avg']
+    scores_1 = cPickle.load(open(config['score'], 'rb'))['1']
+    scores_2 = cPickle.load(open(config['score'], 'rb'))['2']
     ind = cPickle.load(open(config['index'], 'rb'))['response_order']
-    ordered_score = range(len(ind))
+    ordered_score = ordered_score_1 = ordered_score_2 = range(len(ind))
     for i,j in enumerate(ind):
-        ordered_score[j] = scores[i]
-    return ordered_score
+        ordered_score[j] = scores_avg[i]
+        ordered_score_1[j] = scores_1[i]
+        ordered_score_2[j] = scores_2[i]
+    return ordered_score, ordered_score_1, ordered_score_2
 
 def load_data(config):
     contexts = open(config['contexts'], 'r').readlines()
@@ -51,13 +56,15 @@ def load_data(config):
         m_res = open(config[type], 'r').readlines()
         m_res = clean_data(m_res)
         model_res[type] = m_res
-    score = get_score(config)
+    score, score_1, score_2 = get_score(config)
     r_models = []
-    for tr, dr, vr, hr, ts, ds, vs, hs in zip(model_res['tfidf'], model_res['de'], model_res['vhred'], model_res['human'], score[:387], score[387:387*2], score[387*2:387*3], score[387*3:]):
-        r_models.append({'tfidf': (tr, ts, len(tr)),
-                         'de': (dr, ds, len(dr)),
-                         'vhred': (vr, vs, len(vr)),
-                         'human': (hr, hs, len(hr))})
+    for tr, dr, vr, hr, ts, ds, vs, hs, ts1, ds1, vs1, hs1, ts2, ds2, vs2, hs2 in zip(model_res['tfidf'], model_res['de'], model_res['vhred'], model_res['human'], score[:387], score[387:387*2], score[387*2:387*3], score[387*3:] \
+                                              , score_1[:387], score_1[387:387 * 2], score_1[387 * 2:387 * 3], score_1[387 * 3:]\
+                                              , score_2[:387], score_2[387:387 * 2], score_2[387 * 2:387 * 3], score_2[387 * 3:]):
+        r_models.append({'tfidf': (tr, [ts, ts1, ts2], len(tr)),
+                         'de': (dr, [ds, ds1, ds2], len(dr)),
+                         'vhred': (vr, [vs, vs1, vs2], len(vr)),
+                         'human': (hr, [hs, hs1, hs2], len(hr))})
     dataset = []
     for c, r_gt, r_m in zip(contexts, true_res, r_models):
         entry = {'c': c, 'r_gt': r_gt, 'r_models': r_m}

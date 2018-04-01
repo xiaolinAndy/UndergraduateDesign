@@ -5,6 +5,7 @@ import theano.tensor as T
 import numpy as np
 from sklearn.decomposition import PCA
 from scipy.stats import pearsonr, spearmanr
+from other_metrics import *
 import lasagne
 VHRED_FOLDER = '../vhred/'
 # Import VHRED files.
@@ -134,10 +135,12 @@ class ADEM(object):
 
 	def _create_data_splits(self, data):
 		n_models = len(data[0]['r_models'])
-		n = len(data)*n_models
-		n_train = int((1 - (self.config['val_percent'] + self.config['test_percent']))*n)
-		n_val = int((1 - self.config['test_percent'])*n) - n_train
-		n_test = n - n_train - n_val
+		n = len(data)
+		n_train = int((1 - (self.config['val_percent'] + self.config['test_percent']))*n)*n_models
+		n_val = int((1 - self.config['test_percent'])*n)*n_models - n_train
+		n_test = n*n_models - n_train - n_val
+		index_val = n_train / n_models
+		index_test = (n_train + n_test) / n_models
 
 		emb_dim = len(data[0]['c_emb'])
 		# Create arrays to store the data. The middle dimension represents:
@@ -150,32 +153,34 @@ class ADEM(object):
 		test_y = np.zeros((n_test,), dtype=theano.config.floatX)
 
 		train_lengths = np.zeros((n_train, ), dtype=theano.config.floatX)
-
+		order = []
 		# Load in the embeddings from the dataset.
 		for ix, entry in enumerate(data):
 			for jx, m_name in enumerate(data[ix]['r_models'].keys()):
 				kx = ix*n_models + jx
 
 				if kx < n_train:
+					if ix == 0:
+						order.append(m_name)
 					train_x[kx, 0, :] = data[ix]['c_emb']
 					train_x[kx, 1, :] = data[ix]['r_gt_emb']
 					train_x[kx, 2, :] = data[ix]['r_model_embs'][m_name]
-					train_y[kx] = data[ix]['r_models'][m_name][1]
+					train_y[kx] = data[ix]['r_models'][m_name][1][0]
 					train_lengths[kx] = data[ix]['r_models'][m_name][2]
 
 				elif kx < n_train + n_val:
 					val_x[kx-n_train, 0, :] = data[ix]['c_emb']
 					val_x[kx-n_train, 1, :] = data[ix]['r_gt_emb']
 					val_x[kx-n_train, 2, :] = data[ix]['r_model_embs'][m_name]
-					val_y[kx-n_train] = data[ix]['r_models'][m_name][1]
+					val_y[kx-n_train] = data[ix]['r_models'][m_name][1][0]
 
 				else:
 					test_x[kx-n_train-n_val, 0, :] = data[ix]['c_emb']
 					test_x[kx-n_train-n_val, 1, :] = data[ix]['r_gt_emb']
 					test_x[kx-n_train-n_val, 2, :] = data[ix]['r_model_embs'][m_name]
-					test_y[kx-n_train-n_val] = data[ix]['r_models'][m_name][1]
+					test_y[kx-n_train-n_val] = data[ix]['r_models'][m_name][1][0]
 
-		return train_x, val_x, test_x, train_y, val_y, test_y, train_lengths
+		return train_x, val_x, test_x, train_y, val_y, test_y, train_lengths, index_val, index_test, order
 
 	'''def _create_data_splits(self, data):
 		n_models = len(data[0]['r_models'])
@@ -336,7 +341,7 @@ class ADEM(object):
 				data = cPickle.load(handle)
 		
 		# Create train, validation, and test sets.
-		train_x, val_x, test_x, train_y, val_y, test_y, train_lengths = self._create_data_splits(data)
+		train_x, val_x, test_x, train_y, val_y, test_y, train_lengths, index_val, index_test, order = self._create_data_splits(data)
 		'''e1 = np.array(train_x[4][0], dtype ='float32')
 		e2 = np.array(train_x[4][2], dtype='float32')
 		e3 = np.array(train_x[5][2], dtype='float32')
@@ -421,11 +426,13 @@ class ADEM(object):
 				best_val_cor = self._correlation(model_val_out, val_y)
 				best_val_loss = val_loss
 				best_output_val = model_val_out
+				calculate_model_correlation(index_val, index_test, score=model_val_out, order=order)
 
 				model_out_test, _ = self._get_outputs(test_x)
 				best_test_cor = self._correlation(model_out_test, test_y)
 				best_test_loss = np.sqrt(np.mean(np.square(model_out_test - test_y)))
 				#print epoch, best_test_loss, best_test_cor[0][0], best_test_cor[1][0]
+				calculate_model_correlation(index_test, len(data) * 4, score=model_out_test, order=order)
 
 				best_epoch = epoch
 				self.best_params = [self.M.get_value(), self.N.get_value()]

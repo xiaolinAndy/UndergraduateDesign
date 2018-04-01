@@ -4,6 +4,7 @@ from preprocess import load_data
 from scipy.stats import pearsonr, spearmanr
 from experiments import *
 from pythonrouge.pythonrouge import Pythonrouge
+import numpy as np
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -19,17 +20,11 @@ def parse_args():
 def _correlation(output, score):
     return [spearmanr(output, score), pearsonr(output, score)]
 
-
-if __name__ == "__main__":
-    args = parse_args()
-    config = eval(args.prototype)()
-    print 'Beginning...'
-    # This will load our training data.
-    data = load_data(config)
+def calculate_sentence_correlation(index_start, index_end):
+    data = cPickle.load(open(config['exp_folder'] + '/dataset.pkl', 'rb'))
     scores_1, scores_2, scores_3, scores_4 = [], [], [], []
-    rouge_score = []
-    real_scores = []
-    for entry in data:
+    real_scores = real_scores_1 = real_scores_2 = []
+    for entry in data[index_start:index_end]:
         r_gt = entry['r_gt']
         r_models = entry['r_models']
         for key in r_models.keys():
@@ -37,21 +32,63 @@ if __name__ == "__main__":
             scores_2.append(sentence_bleu([r_gt], r_models[key][0], weights=(0.5, 0.5, 0, 0)))
             scores_3.append(sentence_bleu([r_gt], r_models[key][0], weights=(0.33, 0.33, 0.33, 0)))
             scores_4.append(sentence_bleu([r_gt], r_models[key][0], weights=(0.25, 0.25, 0.25, 0.25)))
-            summary = [[" Tokyo is the one of the biggest city in the world."]]
-            reference = [[["The capital of Japan, Tokyo, is the center of Japanese economy."]]]
-            rouge = Pythonrouge(summary_file_exist=False,
-                                summary=summary, reference=reference,
-                                n_gram=2, ROUGE_SU4=True, ROUGE_L=False,
-                                recall_only=True, stemming=True, stopwords=True,
-                                word_level=True, length_limit=True, length=50,
-                                use_cf=False, cf=95, scoring_formula='average',
-                                resampling=True, samples=1000, favor=True, p=0.5)
-            #print rouge.calc_score()
-            #rouge_score.append(rouge.calc_score()[2])
-            real_scores.append(r_models[key][1])
+            real_scores.append(r_models[key][1][0])
+            real_scores_1.append(r_models[key][1][1])
+            real_scores_2.append(r_models[key][1][2])
     cor_1 = _correlation(scores_1, real_scores)
     cor_2 = _correlation(scores_2, real_scores)
     cor_3 = _correlation(scores_3, real_scores)
     cor_4 = _correlation(scores_4, real_scores)
-    #cor_rouge = _correlation(rouge_score, real_scores)
-    print cor_1, '\n', cor_2, '\n', cor_3, '\n', cor_4
+    cor_h = _correlation(real_scores_1, real_scores_2)
+    print cor_1, '\n', cor_2, '\n', cor_3, '\n', cor_4, '\n', cor_h
+
+def calculate_model_correlation(index_start, index_end, score=None, order=None):
+    data = cPickle.load(open(config['exp_folder'] + '/dataset.pkl', 'rb'))
+    if score == None:
+        scores_1, scores_2, scores_3, scores_4 = {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}
+        real_scores = real_scores_1 = real_scores_2 = {'tfidf':0,'de':0,'vhred':0,'human':0}
+        for entry in data[index_start:index_end]:
+            r_gt = entry['r_gt']
+            r_models = entry['r_models']
+            for key in r_models.keys():
+                scores_1[key] += sentence_bleu([r_gt], r_models[key][0], weights=(1, 0, 0, 0))
+                scores_2[key] += sentence_bleu([r_gt], r_models[key][0], weights=(0.5, 0.5, 0, 0))
+                scores_3[key] += sentence_bleu([r_gt], r_models[key][0], weights=(0.33, 0.33, 0.33, 0))
+                scores_4[key] += sentence_bleu([r_gt], r_models[key][0], weights=(0.25, 0.25, 0.25, 0.25))
+                real_scores[key] += r_models[key][1][0]
+                real_scores_1[key] += r_models[key][1][1]
+                real_scores_2[key] += r_models[key][1][2]
+        scores_1 = list(scores_1.values())
+        scores_2 = list(scores_2.values())
+        scores_3 = list(scores_3.values())
+        scores_4 = list(scores_4.values())
+        real_scores = list(real_scores.values())
+        real_scores_1 = list(real_scores_1.values())
+        real_scores_2 = list(real_scores_2.values())
+        cor_1 = _correlation(scores_1, real_scores)
+        cor_2 = _correlation(scores_2, real_scores)
+        cor_3 = _correlation(scores_3, real_scores)
+        cor_4 = _correlation(scores_4, real_scores)
+        cor_h = _correlation(real_scores_1, real_scores_2)
+        print cor_1, '\n', cor_2, '\n', cor_3, '\n', cor_4, '\n', cor_h
+    else:
+        model_scores = {'tfidf': 0, 'de': 0, 'vhred': 0, 'human': 0}
+        real_scores = {'tfidf': 0, 'de': 0, 'vhred': 0, 'human': 0}
+        for entry in data[index_start:index_end]:
+            r_models = entry['r_models']
+            for key in r_models.keys():
+                real_scores[key] += r_models[key][1][0]
+        for i,key in enumerate(order):
+            model_scores[key] = np.mean(score[i::4])
+        cor_1 = _correlation(list(model_scores.values()), list(real_scores.values()))
+        print cor_1, '\n'
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    config = eval(args.prototype)()
+    print 'Beginning...'
+    # This will load our training data.
+    data = load_data(config)
+    calculate_sentence_correlation(0, len(data) * 4)
+    calculate_model_correlation(0, len(data) * 4)
