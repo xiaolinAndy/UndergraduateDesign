@@ -2,12 +2,15 @@ import jieba
 import re
 import cPickle
 import random
+import sys
 import numpy as np
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 def clean_data(text):
     clean_text = []
     for i in range(len(text)):
-        s = re.sub('<end>', '', text[i])
+        s = re.sub('<end>', '', text[i].strip())
         s = re.sub(' ', '', s)
         if not s[-5:] == '<end>':
             s = s + '<end>'
@@ -32,13 +35,41 @@ def clean_data(text):
         clean_text.append(new)
     return clean_text
 
+def clean_data_for_new_embedding(text):
+    clean_text = []
+    for i in range(len(text)):
+        s = re.sub('<end>', '', text[i].strip())
+        s = re.sub(' ', '', s)
+        if not s[-5:] == '<end>':
+            s = s + '<end>'
+        cut = jieba.cut(s)
+        l = []
+        new = []
+        index = 0
+        for w in cut:
+            l.append(w)
+        while index < len(l):
+            if index + 2 < len(l) and l[index] == '<' and l[index + 1] == 'num' and l[index + 2] == '>':
+                new.append('<num>')
+                index += 3
+            elif index + 2 < len(l) and l[index] == '<' and l[index + 1] == 'end' and l[index + 2] == '>':
+                new.append('</s>')
+                index += 3
+            elif l[index] != ' ':
+                new.append(l[index])
+                index += 1
+            else:
+                index += 1
+        clean_text.append(new)
+    return clean_text
+
 def get_score(config):
     ##
     scores_avg = cPickle.load(open(config['score'], 'rb'))['avg']
-    scores_1 = cPickle.load(open(config['score'], 'rb'))['1']
-    scores_2 = cPickle.load(open(config['score'], 'rb'))['2']
+    scores_1 = cPickle.load(open(config['score'], 'rb'))['score_1']
+    scores_2 = cPickle.load(open(config['score'], 'rb'))['score_2']
     ind = cPickle.load(open(config['index'], 'rb'))['response_order']
-    ordered_score = ordered_score_1 = ordered_score_2 = range(len(ind))
+    ordered_score, ordered_score_1, ordered_score_2 = range(len(ind)), range(len(ind)), range(len(ind))
     for i,j in enumerate(ind):
         ordered_score[j] = scores_avg[i]
         ordered_score_1[j] = scores_1[i]
@@ -69,7 +100,21 @@ def load_data(config):
     for c, r_gt, r_m in zip(contexts, true_res, r_models):
         entry = {'c': c, 'r_gt': r_gt, 'r_models': r_m}
         dataset.append(entry)
-    random.seed(10)
-    random.shuffle(dataset)
+    #random.seed(5)
+    #random.shuffle(dataset)
     cPickle.dump(dataset, open(config['exp_folder'] + '/dataset.pkl', 'wb'))
     return dataset
+
+def load_test_data(config):
+    contexts = open('./test.txt', 'r').readlines()
+    f = open('./cleaned_test.txt', 'w')
+    contexts = clean_data_for_new_embedding(contexts)
+    for c in contexts:
+        f.write(c)
+    #return contexts
+if __name__ == "__main__":
+    contexts = open('../tieba/final.human.responses.txt', 'r').readlines()
+    f = open('../tieba/clean.human.responses.txt', 'w')
+    contexts = clean_data_for_new_embedding(contexts)
+    for c in contexts:
+        f.write(' '.join(c) + '\n')

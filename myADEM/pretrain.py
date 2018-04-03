@@ -182,8 +182,31 @@ class VHRED(object):
 
 		return dataset
 
+	def get_embeddings_test(self, dataset, ignore_models=False):
+
+		# Add </s> token to beginning of each.
+		contexts = [['<end>'] + c for c in dataset]
+		context_ids = self._strs_to_idxs(contexts)
+
+		print 'Computing context embeddings...'
+		context_embs = self._compute_embeddings(context_ids)
+		# Update our dataset with each of the embeddings.
+		return context_embs
+
 	def use_saved_embeddings(self):
 		with open(self.config['vhred_embeddings_file'], 'rb') as handle:
 			dataset = cPickle.load(handle)
+		return dataset
+
+	def change_embeddings(self, dataset, name, new_models=None, ignore_models=False):
+		# Update our dataset with each of the embeddings.
+		embs = cPickle.load(open(name, 'rb'))
+		for ix in xrange(len(dataset)):
+			dataset[ix]['c_emb'] = embs['c'][ix]
+			dataset[ix]['r_gt_emb'] = embs['r_gt'][ix]
+			if not ignore_models:
+				dataset[ix]['r_model_embs'] = {}
+				for jx, m_name in enumerate(self.MODELS):
+					dataset[ix]['r_model_embs'][m_name] = embs['r_models'][m_name][ix]
 		return dataset
 

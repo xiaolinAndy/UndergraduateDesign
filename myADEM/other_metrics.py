@@ -5,6 +5,7 @@ from scipy.stats import pearsonr, spearmanr
 from experiments import *
 from pythonrouge.pythonrouge import Pythonrouge
 import numpy as np
+import cPickle
 import sys
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -20,10 +21,10 @@ def parse_args():
 def _correlation(output, score):
     return [spearmanr(output, score), pearsonr(output, score)]
 
-def calculate_sentence_correlation(index_start, index_end):
+def calculate_sentence_correlation(index_start, index_end, config):
     data = cPickle.load(open(config['exp_folder'] + '/dataset.pkl', 'rb'))
     scores_1, scores_2, scores_3, scores_4 = [], [], [], []
-    real_scores = real_scores_1 = real_scores_2 = []
+    real_scores, real_scores_1, real_scores_2 = [], [], []
     for entry in data[index_start:index_end]:
         r_gt = entry['r_gt']
         r_models = entry['r_models']
@@ -35,6 +36,7 @@ def calculate_sentence_correlation(index_start, index_end):
             real_scores.append(r_models[key][1][0])
             real_scores_1.append(r_models[key][1][1])
             real_scores_2.append(r_models[key][1][2])
+    #print len(scores_1), len(real_scores)
     cor_1 = _correlation(scores_1, real_scores)
     cor_2 = _correlation(scores_2, real_scores)
     cor_3 = _correlation(scores_3, real_scores)
@@ -42,11 +44,11 @@ def calculate_sentence_correlation(index_start, index_end):
     cor_h = _correlation(real_scores_1, real_scores_2)
     print cor_1, '\n', cor_2, '\n', cor_3, '\n', cor_4, '\n', cor_h
 
-def calculate_model_correlation(index_start, index_end, score=None, order=None):
+def calculate_model_correlation(index_start, index_end, config, score=None, order=None):
     data = cPickle.load(open(config['exp_folder'] + '/dataset.pkl', 'rb'))
-    if score == None:
+    if order == None:
         scores_1, scores_2, scores_3, scores_4 = {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}
-        real_scores = real_scores_1 = real_scores_2 = {'tfidf':0,'de':0,'vhred':0,'human':0}
+        real_scores, real_scores_1, real_scores_2 = {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}, {'tfidf':0,'de':0,'vhred':0,'human':0}
         for entry in data[index_start:index_end]:
             r_gt = entry['r_gt']
             r_models = entry['r_models']
@@ -70,6 +72,7 @@ def calculate_model_correlation(index_start, index_end, score=None, order=None):
         cor_3 = _correlation(scores_3, real_scores)
         cor_4 = _correlation(scores_4, real_scores)
         cor_h = _correlation(real_scores_1, real_scores_2)
+        #print scores_1, scores_2, scores_3, scores_4, real_scores
         print cor_1, '\n', cor_2, '\n', cor_3, '\n', cor_4, '\n', cor_h
     else:
         model_scores = {'tfidf': 0, 'de': 0, 'vhred': 0, 'human': 0}
@@ -90,5 +93,5 @@ if __name__ == "__main__":
     print 'Beginning...'
     # This will load our training data.
     data = load_data(config)
-    calculate_sentence_correlation(0, len(data) * 4)
-    calculate_model_correlation(0, len(data) * 4)
+    calculate_sentence_correlation(0, len(data), config)
+    calculate_model_correlation(0, len(data), config)

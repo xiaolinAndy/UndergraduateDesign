@@ -17,7 +17,7 @@ def default_config():
 	config['pretraining'] = 'vhred'
 	# True if we should reduce the dimensionality of the pretrained embeddings.
 	config['use_pca'] = True
-	config['pca_components'] = 50
+	config['pca_components'] = 100
 	# True if we should oversample the data such that the candidate responses have the same distribution of scores across different lengths.
 	config['oversample_length'] = True
 	config['embedding_type'] = 'CONTEXT'
@@ -56,6 +56,7 @@ def default_config():
 	config['human'] = '../tieba/final.human.responses.txt'
 	config['score'] = '../data/statistics.pkl'
 	config['index'] = '../data/index2.pkl'
+	config['iclr_embs'] = '../../text_embedding/embeddings.pkl'
 
 	return config
 
