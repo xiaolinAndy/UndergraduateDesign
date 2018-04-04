@@ -144,18 +144,18 @@ class ADEM(object):
         n_test = n * n_models - n_train - n_val
         index_val = n_train / n_models
         index_test = (n_train + n_test) / n_models
-
+        real_train = n_train
         emb_dim = len(data[0]['c_emb'])
         # Create arrays to store the data. The middle dimension represents:
         # 0: context, 1: gt_response, 2: model_response
-        train_x = np.zeros((n_train, 3, emb_dim), dtype=theano.config.floatX)
+        train_x = np.zeros((real_train, 3, emb_dim), dtype=theano.config.floatX)
         val_x = np.zeros((n_val, 3, emb_dim), dtype=theano.config.floatX)
         test_x = np.zeros((n_test, 3, emb_dim), dtype=theano.config.floatX)
-        train_y = np.zeros((n_train,), dtype=theano.config.floatX)
+        train_y = np.zeros((real_train,), dtype=theano.config.floatX)
         val_y = np.zeros((n_val,), dtype=theano.config.floatX)
         test_y = np.zeros((n_test,), dtype=theano.config.floatX)
 
-        train_lengths = np.zeros((n_train,), dtype=theano.config.floatX)
+        train_lengths = np.zeros((real_train,), dtype=theano.config.floatX)
         order = []
         # Load in the embeddings from the dataset.
         for ix, entry in enumerate(data):
@@ -165,6 +165,8 @@ class ADEM(object):
                 if kx < n_train:
                     if ix == 0:
                         order.append(m_name)
+                    if kx >= real_train:
+                        continue
                     train_x[kx, 0, :] = data[ix]['c_emb']
                     train_x[kx, 1, :] = data[ix]['r_gt_emb']
                     train_x[kx, 2, :] = data[ix]['r_model_embs'][m_name]
@@ -240,47 +242,53 @@ class ADEM(object):
         # Matrices for predicting score
         self.M = theano.shared(np.eye(emb_dim).astype(theano.config.floatX), borrow=True)
         self.N = theano.shared(np.eye(emb_dim).astype(theano.config.floatX), borrow=True)
+        #self.P = theano.shared(np.eye(emb_dim*2+1).astype(theano.config.floatX), borrow=True)
         # self.new_mean = theano.shared(value=init_mean.astype(theano.config.floatX), name="mean")
         # self.new_range = theano.shared(value=init_range.astype(theano.config.floatX), name="range")
         self.rng = np.random.RandomState(1)
-        self.hidden_size = 50
-        self.W1 = theano.shared(value=NormalInit(self.rng, 3 * emb_dim, self.hidden_size), name='W1')
-        self.b1 = theano.shared(value=np.zeros((self.hidden_size,), dtype='float32'), name='b1')
-        self.W2 = theano.shared(value=NormalInit(self.rng, self.hidden_size, 1), name='W2')
-        self.b2 = theano.shared(value=0., name='b2')
+        #self.hidden_size = 50
+        #self.W1 = theano.shared(value=NormalInit(self.rng, 3 * emb_dim, self.hidden_size), name='W1')
+        #self.b1 = theano.shared(value=np.zeros((self.hidden_size,), dtype='float32'), name='b1')
+        #self.W2 = theano.shared(value=NormalInit(self.rng, self.hidden_size, 1), name='W2')
+        #self.b2 = theano.shared(value=0., name='b2')
 
         # Set embeddings by slicing tensor
         self.emb_context = x[:, 0, :]
         self.emb_true_response = x[:, 1, :]
         self.emb_response = x[:, 2, :]
-        embs = T.concatenate([self.emb_context, self.emb_true_response, self.emb_response], axis = 1)
-        t1 = T.tanh(T.dot(embs, self.W1) + self.b1)
-        out = T.nnet.sigmoid(T.dot(t1, self.W2))
-        out = T.flatten(out)
-        output = out * 4 + 1
+        #embs = T.concatenate([self.emb_context, self.emb_true_response, self.emb_response], axis = 1)
+        #t1 = T.tanh(T.dot(embs, self.W1) + self.b1)
+        #out = T.nnet.sigmoid(T.dot(t1, self.W2) + self.b2)
+        #out = T.flatten(out)
+        #output = out * 4 + 1
 
         # Compute score predictions
-        #self.pred = 0
-        #self.pred1 = T.sum(self.emb_context * T.dot(self.emb_response, self.M), axis=1)
-        #self.pred2 = T.sum(self.emb_true_response * T.dot(self.emb_response, self.N), axis=1)
+        self.pred = 0
+        self.pred1 = T.sum(self.emb_context * T.dot(self.emb_response, self.M), axis=1)
+        self.pred2 = T.sum(self.emb_true_response * T.dot(self.emb_response, self.N), axis=1)
+        #self.pred3 = T.sum(self.emb_context * T.dot(self.emb_true_response, self.N), axis=1)
 
-        self.pred = output
-        #if self.config['use_c']: self.pred += self.pred1
-        #if self.config['use_r']: self.pred += self.pred2
+        #self.pred = output
+        if self.config['use_c']: self.pred += self.pred1
+        if self.config['use_r']: self.pred += self.pred2
+
+        #ctr = T.concatenate([self.emb_context, self.emb_true_response, self.pred3.dimshuffle(0, 'x')], axis = 1)
+        #cr = T.concatenate([self.emb_context, self.emb_response, self.pred1.dimshuffle(0, 'x')], axis = 1)
+        #self.pred = T.sum(ctr * T.dot(cr, self.P), axis=1)
 
         # To re-scale dot product values to [1,5] range.
         # new_mean = T.mean(self.pred)
         # new_range = T.max(self.pred) - T.min(self.pred)
         # output = 3 + 4 * (self.pred - self.new_mean) / self.new_range
-        #output = T.nnet.sigmoid(self.pred) * 4 + 1
-        # output = 3 + 4 * (self.pred - init_mean) / init_range
+        output = T.nnet.sigmoid(self.pred) * 4 + 1
+        #output = 3 + 4 * (self.pred - init_mean) / init_range
         # output = self.pred
 
         loss = T.mean((output - y) ** 2)
-        l2_reg = self.M.norm(2) + self.N.norm(2)
-        l1_reg = self.M.norm(1) + self.N.norm(1)
-        # l2_reg = self.W1.norm(2) + self.W2.norm(2)
-        # l1_reg = self.W1.norm(1) + self.W2.norm(1)
+        l2_reg = self.M.norm(2) + self.N.norm(2)# + self.P.norm(2)
+        l1_reg = self.M.norm(1) + self.N.norm(1)# + self.P.norm(1)
+        #l2_reg = self.W1.norm(2) + self.W2.norm(2)
+        #l1_reg = self.W1.norm(1) + self.W2.norm(1)
 
         score_cost = loss + self.config['l2_reg'] * l2_reg + self.config['l1_reg'] * l1_reg
 
@@ -292,10 +300,11 @@ class ADEM(object):
         )
 
         params = []
-        #if self.config['use_c']: params.append(self.M)
-        #if self.config['use_r']: params.append(self.N)
-        params += [self.W1, self.W2, self.b1]
-        updates = lasagne.updates.adam(score_cost, params)
+        if self.config['use_c']: params.append(self.M)
+        if self.config['use_r']: params.append(self.N)
+        #params.append(self.P)
+        #params += [self.W1, self.W2, self.b1, self.b2]
+        updates = lasagne.updates.adam(score_cost, params, learning_rate=0.0002)
 
         if training_mode == True:
             bs = self.config['bs']

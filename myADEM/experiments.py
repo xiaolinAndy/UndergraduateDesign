@@ -30,7 +30,7 @@ def default_config():
 	## Model parameters.
 
 	# True if the ADEM model should include the cMr term.
-	config['use_c'] = True
+	config['use_c'] = False
 	# True if the ADEM model should include the rNr' term.
 	config['use_r'] = True
 	# Regularization constants on the (M, N) parameters.
