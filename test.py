@@ -145,42 +145,27 @@ else:
     print(count1, count2)'''
 #utterance = utterance.replace('  ', ' ')
 
-'''file_name = '../Data/tieba/comments_final_modified.pkl'
-tieba_context = open('./tieba/new.tieba.contexts.txt', 'r', encoding='utf-8').readlines()
-tieba_response = open('./tieba/new.true.responses.txt', 'r', encoding='utf-8').readlines()
-output = open('./tieba/new.human.responses.txt', 'w')
-f = pickle.load(open(file_name, 'rb'))
-count = 0
-context = []
-response = []
-for d in f:
-    context.append(''.join(d[0]))
-    response.append(''.join(d[1]))
-#print(context[0])
-d = defaultdict(list)
-for k,va in [(v,i) for i,v in enumerate(context)]:
-    d[k].append(va)
-for i, line in enumerate(tieba_context):
-    flag = 0
-    #print(line)
-    line = line.replace(' ', '').strip()
-    index = d[line]
-    tr = tieba_response[i].replace(' ', '').strip()
-    if len(index) > 1:
-        for j in index:
-            if tr != response[j] and response[j].find('撸') == -1 and response[j].find('十五字') == -1:
-                output.write(response[j] + '\n')
-                flag = 1
-                count += 1
-                break
-    if not flag:
-        print(line, '\n')
-        res = input("请输入回答: ")
-        output.write(res + '\n')
-print(count)'''
-ind = pickle.load(open('./data/index', 'rb'))
+'''ind = pickle.load(open('./data/index', 'rb'))
 f = open('./data/index2.pkl', 'wb')
-pickle.dump(ind, f, protocol=2)
+pickle.dump(ind, f, protocol=2)'''
+
+file_name = 'D:\Andy\Code\data\\tieba_500K_train.pkl'
+output = open('./data/triples.txt', 'w')
+D = pickle.load(open(file_name, 'rb'))['data']
+contexts = [d[0] for d in D]
+responses = [d[1] for d in D]
+for i, d in enumerate(D):
+    if i % 10 == 0:
+        print i
+    try:
+        index = (contexts[:i] + contexts[i+1:]).index(d[0])
+        r_p = responses[index]
+        str = ' '.join(d[0]) + '\t' + ' '.join(d[1]) + '\t' + ' '.join(r_p)
+        str = re.sub('<end>', '</s>', str)
+        output.write(str + '\n')
+    except:
+        continue
+
 
 
 

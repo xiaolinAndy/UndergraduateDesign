@@ -30,7 +30,7 @@ def default_config():
 	## Model parameters.
 
 	# True if the ADEM model should include the cMr term.
-	config['use_c'] = False
+	config['use_c'] = True
 	# True if the ADEM model should include the rNr' term.
 	config['use_r'] = True
 	# Regularization constants on the (M, N) parameters.
@@ -57,6 +57,14 @@ def default_config():
 	config['score'] = '../data/statistics.pkl'
 	config['index'] = '../data/index2.pkl'
 	config['iclr_embs'] = '../../text_embedding/embeddings.pkl'
+
+	config['word_vec'] = '../embedding/vector.sg300.corpus.word.ch'
+	config['emb_dim'] = 300
+	config['paraphrase'] = '../embedding/training_data.txt'
+	config['emb_epoch'] = 20
+	config['grad_clip'] = 1
+
+
 
 	return config
 

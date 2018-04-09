@@ -15,6 +15,7 @@ sys.setdefaultencoding('utf-8')
 def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--prototype", type=str, help="Prototype to use (must be specified)", default='default_config')
+	parser.add_argument("--model", type=str, help="use supervised training or unsupervised", default='supervised_simple')
 	args = parser.parse_args()
 	return args
 
@@ -37,9 +38,16 @@ if __name__ == "__main__":
 		data = load_data(config)
 
 	# Train our model.
-	adem = ADEM(config)
-	print 'Training...'
-	adem.train_eval(data, config, use_saved_embeddings=True)
+	if args.model == 'supervised_simple':
+		adem = ADEM(config)
+		print 'Training...'
+		adem.train_eval(data, config, use_saved_embeddings=False)
+		print 'Trained!'
+		adem.save()
+	elif args.model == 'supervised':
+		model = ppdb_word_model(We, params)
+		ppdb_utils.train(model, examples, words, params)
+
 	#data = load_test_data(config)
 	'''data = adem.pretrainer.get_embeddings(data)
 	c = data[0]['c_emb']
@@ -71,8 +79,7 @@ if __name__ == "__main__":
 			index = i
 			biggest_sim = sim
 	print index, biggest_sim'''
-	print 'Trained!'
-	adem.save()
+
 
 
 	
