@@ -56,7 +56,7 @@ def default_config():
 	config['human'] = '../tieba/final.human.responses.txt'
 	config['score'] = '../data/statistics.pkl'
 	config['index'] = '../data/index2.pkl'
-	config['iclr_embs'] = '../../text_embedding/embeddings.pkl'
+	config['iclr_embs'] = '../embedding/embeddings.pkl'
 
 	config['word_vec'] = '../embedding/vector.sg300.corpus.word.ch'
 	config['emb_dim'] = 300

@@ -489,10 +489,10 @@ class ADEM (object):
 
     def save(self):
         # Save the PCA model.
-        saved_model = {'pca': self.pca,
+        saved_model = {#'pca': self.pca,
                        'params': self.best_params,
-                       'config': self.config,
-                       'init_mean': self.init_mean,
-                       'init_range': self.init_range}
+                       'config': self.config}
+                       #'init_mean': self.init_mean,
+                       #'init_range': self.init_range}
         with open ('%s/adem_model.pkl' % self.config['exp_folder'], 'wb') as handle:
             cPickle.dump (saved_model, handle)

@@ -2,6 +2,7 @@
 This file is the training pipeline for the ADEM model.
 '''
 import argparse
+import lasagne
 from experiments import *
 import os
 import cPickle
@@ -11,6 +12,10 @@ import sys
 import numpy as np
 reload(sys)
 sys.setdefaultencoding('utf-8')
+sys.path.insert (0, '../embedding')
+from ppdb_word_model import *
+from ppdb_utils import train, getWordmap, getPPDBData
+from params import *
 
 def parse_args():
 	parser = argparse.ArgumentParser()
@@ -45,8 +50,27 @@ if __name__ == "__main__":
 		print 'Trained!'
 		adem.save()
 	elif args.model == 'supervised':
+		params = params()
+		params.LW = config['LW']
+		params.LC = config['LC']
+		params.outfile = config['outfile']
+		params.batchsize = config['batchsize']
+		params.hiddensize = config['emb_dim']
+		params.wordfile = config['word_vec']
+		params.updatewords = config['updatewords']
+		params.train = config['paraphrase']
+		params.margin = config['margin']
+		params.epochs = config['emb_epoch']
+		params.learner = lasagne.updates.adam
+		params.eta = config['eta']
+		params.clip = config['clip']
+		(words, We) = getWordmap(config['word_vec'])
+		examples = getPPDBData(params.train, words)
 		model = ppdb_word_model(We, params)
-		ppdb_utils.train(model, examples, words, params)
+		adem = ADEM(config)
+		print 'Training...'
+		train(model, examples, words, params, adem, config)
+
 
 	#data = load_test_data(config)
 	'''data = adem.pretrainer.get_embeddings(data)
