@@ -4,6 +4,8 @@ import re
 import sys
 import string
 from collections import defaultdict
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 state = 'tieba'
 '''if state == 'twitter':
@@ -159,7 +161,12 @@ for i, d in enumerate(D):
         print i
     try:
         index = (contexts[:i] + contexts[i+1:]).index(d[0])
-        r_p = responses[index]
+        if index < i:
+            r_p = responses[index]
+        else:
+            r_p = responses[index + 1]
+        if r_p == d[1]:
+            continue
         str = ' '.join(d[0]) + '\t' + ' '.join(d[1]) + '\t' + ' '.join(r_p)
         str = re.sub('<end>', '</s>', str)
         output.write(str + '\n')
