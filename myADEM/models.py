@@ -190,10 +190,14 @@ class ADEM (object):
 
     def _create_data_splits(self, data):
         n_models = len (data[0]['r_models'])
-        n = len (data) * n_models
-        n_train = int ((1 - (self.config['val_percent'] + self.config['test_percent'])) * n)
-        n_val = int ((1 - self.config['test_percent']) * n) - n_train
-        n_test = n - n_train - n_val
+        #n = len (data) * n_models
+        #n_train = int ((1 - (self.config['val_percent'] + self.config['test_percent'])) * n)
+        #n_val = int ((1 - self.config['test_percent']) * n) - n_train
+        #n_test = n - n_train - n_val
+        n = len (data)
+        n_train = int ((1 - (self.config['val_percent'] + self.config['test_percent'])) * n) * n_models
+        n_val = int ((1 - self.config['test_percent']) * n) * n_models - n_train
+        n_test = n * n_models - n_train - n_val
         index_val = (n_val) / n_models
         index_test = (n_val + n_test) / n_models
 
@@ -235,6 +239,42 @@ class ADEM (object):
                     train_y[kx - n_test - n_val] = data[ix]['r_models'][m_name][1][0]
                     train_lengths[kx - n_test - n_val] = data[ix]['r_models'][m_name][2]
         return train_x, val_x, test_x, train_y, val_y, test_y, train_lengths, index_val, index_test, order
+
+    def _create_data_splits_unsupervised(self, data):
+        n_models = len (data[0]['r_models'])
+        #n = len (data) * n_models
+        #n_train = int ((1 - (self.config['val_percent'] + self.config['test_percent'])) * n)
+        #n_val = int ((1 - self.config['test_percent']) * n) - n_train
+        #n_test = n - n_train - n_val
+        n = len (data)
+        n_train = int ((1 - (self.config['val_percent'] + self.config['test_percent'])) * n) * n_models
+        n_val = int ((1 - self.config['test_percent']) * n) * n_models - n_train
+        n_test = n * n_models - n_train - n_val
+        index_val = (n_val) / n_models
+        index_test = (n_val + n_test) / n_models
+
+        # Create arrays to store the data. The middle dimension represents:
+        # 0: context, 1: gt_response, 2: model_response
+        train_y = np.zeros ((n_train,), dtype=theano.config.floatX)
+        val_y = np.zeros ((n_val,), dtype=theano.config.floatX)
+        test_y = np.zeros ((n_test,), dtype=theano.config.floatX)
+
+        order = []
+        # Load in the embeddings from the dataset.
+        for ix, entry in enumerate (data):
+            for jx, m_name in enumerate (data[ix]['r_models'].keys ()):
+                kx = ix * n_models + jx
+
+                if kx < n_val:
+                    if ix == 0: order.append (m_name)
+                    val_y[kx] = data[ix]['r_models'][m_name][1][0]
+
+                elif kx < n_val + n_test:
+                    test_y[kx - n_val] = data[ix]['r_models'][m_name][1][0]
+
+                else:
+                    train_y[kx - n_test - n_val] = data[ix]['r_models'][m_name][1][0]
+        return train_y, val_y, test_y, index_val, index_test, order
 
 
     def _build_model(self, emb_dim, init_mean, init_range, training_mode=False):
@@ -309,7 +349,7 @@ class ADEM (object):
         if self.config['use_r']: params.append (self.N)
         # params.append(self.P)
         # params += [self.W1, self.W2, self.b1, self.b2]
-        updates = lasagne.updates.adam (score_cost, params, learning_rate=0.0005)
+        updates = lasagne.updates.adam (score_cost, params, learning_rate=0.0001)
 
         if training_mode == True:
             bs = self.config['bs']
@@ -347,13 +387,13 @@ class ADEM (object):
         return theano.shared (np.asarray (x, dtype=theano.config.floatX), borrow=True)
 
 
-    def train_eval(self, data, config, use_saved_embeddings=True):
+    def train_eval(self, data, config, use_saved_embeddings=True, model=None):
         # Each dictionary looks like { 'c': context, 'r_gt': true response, 'r_models': {'hred': (model_response, score), ... }}
         fname_embeddings = '%s/%s' % (self.config['exp_folder'], self.config['vhred_embeddings_file'])
         if (not use_saved_embeddings) or (not os.path.exists (fname_embeddings)):
             # Get embeddings for our dataset.
             assert not self.pretrainer is None
-            data = self.pretrainer.change_embeddings (data, config['iclr_embs'])  # config['iclr_embs']
+            data = self.pretrainer.change_embeddings(data, config['iclr_embs'])  # config['iclr_embs']
 
             with open (fname_embeddings, 'wb') as handle:
                 cPickle.dump (data, handle)
@@ -384,6 +424,9 @@ class ADEM (object):
 
         # Build the Theano model.
         self._build_model (train_x.shape[2], init_mean, init_range, training_mode=True)
+        if model:
+            self.M.set_value(model.M.get_value())
+            self.N.set_value(model.N.get_value())
 
         # Train the model.
         print 'Starting training...'
@@ -407,7 +450,9 @@ class ADEM (object):
         train_correlation = self._correlation (model_train_out, train_y)
         # print self.init_mean, self.init_range
         best_val_cor = self._correlation (model_val_out, val_y)
-        print 'epoch: ', epoch, train_loss, val_loss, train_correlation[1][0], best_val_cor[1][0]
+        model_out_test, _ = self._get_outputs(test_x)
+        best_test_cor = self._correlation(model_out_test, test_y)
+        print 'epoch: ', epoch, train_loss, val_loss, best_val_cor[0][0], best_val_cor[1][0], best_test_cor[0][0], best_test_cor[1][0]
 
         while (epoch < self.config['max_epochs']):
             epoch += 1
@@ -444,9 +489,10 @@ class ADEM (object):
                 model_out_test, _ = self._get_outputs (test_x)
                 best_test_cor = self._correlation (model_out_test, test_y)
                 best_test_loss = np.sqrt (np.mean (np.square (model_out_test - test_y)))
-                # print epoch, best_test_loss, best_test_cor[0][0], best_test_cor[1][0]
+                print epoch, best_test_loss, best_test_cor[0][0], best_test_cor[1][0]
                 #print 'test data: '
-                #calculate_sentence_correlation(index_test/4, (index_val + index_test)/4, config)
+                #calculate_sentence_correlation(index_val, index_test, config)
+                #calculate_model_correlation (index_val, index_test, config, score=model_out_test, order=order)
 
                 best_epoch = epoch
                 self.best_params = [self.M.get_value (), self.N.get_value ()]
@@ -459,7 +505,7 @@ class ADEM (object):
         # calculate_model_correlation(index_val / 4, index_test / 4, config)
         calculate_sentence_correlation (0, index_val, config)
         print 'bleu on test: '
-        # calculate_model_correlation(index_test / 4, len(data), config)
+        #calculate_model_correlation(index_val, index_test, config)
         calculate_sentence_correlation (index_val, index_test, config)
 
         # Print out results

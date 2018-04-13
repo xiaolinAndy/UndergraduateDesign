@@ -149,7 +149,7 @@ else:
 
 '''ind = pickle.load(open('./data/index', 'rb'))
 f = open('./data/index2.pkl', 'wb')
-pickle.dump(ind, f, protocol=2)'''
+pickle.dump(ind, f, protocol=2)
 
 file_name = 'D:\Andy\Code\data\\tieba_500K_train.pkl'
 output = open('./data/triples.txt', 'w')
@@ -171,7 +171,24 @@ for i, d in enumerate(D):
         str = re.sub('<end>', '</s>', str)
         output.write(str + '\n')
     except:
-        continue
+        continue'''
+
+'''embs = {}
+embs['c'] = open('./tieba/clean.tieba.contexts.txt', 'r').readlines()
+embs['r_gt'] = open('./tieba/clean.true.responses.txt', 'r').readlines()
+embs['r_models'] = {}
+embs['r_models']['tfidf'] = open('./tieba/clean.tfidf.responses.txt', 'r').readlines()
+embs['r_models']['de'] = open('./tieba/clean.dual_encoder.responses.txt', 'r').readlines()
+embs['r_models']['vhred'] = open('./tieba/clean.VHRED.responses.txt', 'r').readlines()
+embs['r_models']['human'] = open('./tieba/clean.human.responses.txt', 'r').readlines()
+f = open('./tieba/clean.total.txt', 'w')
+r_models = embs['r_models']['tfidf'] + embs['r_models']['de'] + embs['r_models']['vhred'] + embs['r_models']['human']
+
+for i in range(len(r_models)):
+    str = embs['c'][i % len(embs['c'])].strip() + '\t' + embs['r_gt'][i % len(embs['c'])].strip() + '\t' + r_models[i].strip() + '\n'
+    f.write(str)'''
+
+
 
 
 

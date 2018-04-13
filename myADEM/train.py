@@ -14,7 +14,8 @@ reload(sys)
 sys.setdefaultencoding('utf-8')
 sys.path.insert (0, '../embedding')
 from ppdb_word_model import *
-from ppdb_utils import train, getWordmap, getPPDBData
+from ppdb_lstm_model import *
+from ppdb_utils import train, getWordmap, getPPDBData, getPPDBData_unsupervise
 from params import *
 
 def parse_args():
@@ -49,7 +50,7 @@ if __name__ == "__main__":
 		adem.train_eval(data, config, use_saved_embeddings=False)
 		print 'Trained!'
 		adem.save()
-	elif args.model == 'supervised':
+	else:
 		params = params()
 		params.LW = config['LW']
 		params.LC = config['LC']
@@ -64,12 +65,59 @@ if __name__ == "__main__":
 		params.learner = lasagne.updates.adam
 		params.eta = config['eta']
 		params.clip = config['clip']
+		params.type = 'MIX'
+		params.save = False
 		(words, We) = getWordmap(config['word_vec'])
-		examples = getPPDBData(params.train, words)
-		model = ppdb_word_model(We, params)
-		adem = ADEM(config)
-		print 'Training...'
-		train(model, examples, words, params, adem, config)
+		if args.model == 'supervised':
+			examples = getPPDBData (params.train, words)
+			model = ppdb_word_model(We, params)
+			adem = ADEM(config)
+			print 'Training...'
+			train(model, examples, words, params, adem, config, data, args.model)
+		elif args.model == 'unsupervised':
+			params.train = config['triple']
+			examples = getPPDBData_unsupervise(params.train, words)
+			model = unsupervised_adem_model(We, params)
+			print 'Training...'
+			adem = ADEM(config)
+			train(model, examples, words, params, adem, config, data, args.model)
+		elif args.model == 'unsupervised_complex':
+			params.train = config['triple']
+			examples = getPPDBData_unsupervise(params.train, words)
+			model = unsupervised_adem_model_complex(We, params)
+			print 'Training...'
+			adem = ADEM(config)
+			train(model, examples, words, params, adem, config, data, args.model)
+		elif args.model == 'unsupervised_ruber':
+			params.train = config['triple']
+			examples = getPPDBData_unsupervise(params.train, words)
+			model = unsupervised_ruber_model(We, params)
+			print 'Training...'
+			adem = ADEM(config)
+			train(model, examples, words, params, adem, config, data, args.model)
+		elif args.model == 'unsupervised_lstm':
+			params.train = config['triple']
+			params.layersize = 300
+			params.peephole = True
+			examples = getPPDBData_unsupervise(params.train, words)
+			model = unsupervised_adem_lstm_model(We, params)
+			print 'Training...'
+			adem = ADEM(config)
+			train(model, examples, words, params, adem, config, data, args.model)
+		else:
+			model = unsupervised_adem_model(We, params)
+			params = cPickle.load(open(config['model_name'], 'rb'))
+			model.We.set_value(params[0].get_value())
+			model.M.set_value(params[1].get_value())
+			model.N.set_value(params[2].get_value())
+			print 'Training...'
+			config['iclr_embs'] = '../embedding/unsupervised_embeddings.pkl'
+			adem = ADEM(config)
+			train(model, None, words, params, adem, config, data, args.model)
+
+
+
+
 
 
 	#data = load_test_data(config)

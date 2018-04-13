@@ -2,7 +2,6 @@ import theano
 import numpy as np
 from theano import config
 from time import time
-from evaluate import evaluate
 import cPickle
 import sys
 
@@ -15,6 +14,13 @@ def saveParams(model, fname):
     f = file(fname, 'wb')
     cPickle.dump(model.all_params, f, protocol=cPickle.HIGHEST_PROTOCOL)
     f.close()
+'''def saveParams(model, fname):
+    f = open(fname, 'wb')
+    params = {'We': model.We.get_value(),
+              'M': model.M.get_value(),
+              'N': model.N.get_value()}
+    cPickle.dump(params, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    f.close()'''
 
 def prepare_data(list_of_seqs):
     lengths = [len(s) for s in list_of_seqs]

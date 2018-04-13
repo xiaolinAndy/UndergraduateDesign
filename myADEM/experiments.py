@@ -57,12 +57,22 @@ def default_config():
 	config['score'] = '../data/statistics.pkl'
 	config['index'] = '../data/index2.pkl'
 	config['iclr_embs'] = '../embedding/embeddings.pkl'
-
+	#config['iclr_embs'] = '../../text_embedding/embeddings.pkl'
 	config['word_vec'] = '../embedding/vector.sg300.corpus.word.ch'
 	config['emb_dim'] = 300
 	config['paraphrase'] = '../embedding/training_data.txt'
-	config['emb_epoch'] = 20
-	config['grad_clip'] = 1
+	config['triple'] = '../data/triples.txt'
+	config['emb_epoch'] = 50
+	config['clip'] = 1
+	config['LW'] = 1e-06
+	config['LC'] = 1e-04
+	config['outfile'] = '../embedding/save-param-ruber-mod'
+	config['batchsize'] = 100
+	config['updatewords'] = True
+	config['margin'] = 0.4
+	config['eta'] = 0.0005
+	config['model_name'] = '../embedding/save-param-50.pickle'
+
 
 
 
