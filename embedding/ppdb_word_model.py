@@ -164,8 +164,7 @@ class unsupervised_adem_model_complex(object):
 
         l_in2 = lasagne.layers.InputLayer((None, self.We.get_value().shape[1] * 3))
         d1 = lasagne.layers.DenseLayer(l_in2, self.We.get_value().shape[1], nonlinearity=lasagne.nonlinearities.tanh)
-        d2 = lasagne.layers.DenseLayer(d1, self.We.get_value().shape[1], nonlinearity=lasagne.nonlinearities.tanh)
-        l_sigmoid = lasagne.layers.DenseLayer(d2, 1, nonlinearity=lasagne.nonlinearities.sigmoid)
+        l_sigmoid = lasagne.layers.DenseLayer(d1, 1, nonlinearity=lasagne.nonlinearities.sigmoid)
         st = lasagne.layers.get_output(l_sigmoid, {l_in2: crt})
         sf = lasagne.layers.get_output(l_sigmoid, {l_in2: crf})
 
@@ -174,11 +173,14 @@ class unsupervised_adem_model_complex(object):
         cost = cost*(cost > 0)
 
         #self.all_params = lasagne.layers.get_all_params(l_average, trainable=True) + [self.M, self.N]
-        self.all_params = lasagne.layers.get_all_params(l_average, trainable=True) + [self.M]
-
+        self.network_params = lasagne.layers.get_all_params(l_average, trainable=True) + lasagne.layers.get_all_params(
+            l_sigmoid, trainable=True)
+        self.network_params.pop(0)
+        self.all_params = lasagne.layers.get_all_params(l_average, trainable=True) + lasagne.layers.get_all_params(l_sigmoid, trainable=True)
+        l2 = 0.5 * params.LC * sum(lasagne.regularization.l2(x) for x in self.network_params)
         #word_reg = 0.5*params.LW*lasagne.regularization.l2(self.We-initial_We) + 0.5*params.LC*self.M.norm(2) + self.N.norm(2)
-        word_reg = 0.5 * params.LW * lasagne.regularization.l2(self.We - initial_We) + 0.5 * params.LC * self.M.norm(2)
-        cost = T.mean(cost) + word_reg
+        word_reg = 0.5 * params.LW * lasagne.regularization.l2(self.We - initial_We)
+        cost = T.mean(cost) + word_reg + l2
 
         #feedforward
         self.feedforward_function = theano.function([g1batchindices,g1mask], embg1)
